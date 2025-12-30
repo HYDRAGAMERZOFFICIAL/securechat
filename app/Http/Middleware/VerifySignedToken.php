@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Device;
 
 class VerifySignedToken
 {
@@ -22,9 +23,19 @@ class VerifySignedToken
             return response()->json(['message' => 'Invalid or expired token'], 401);
         }
 
-        // Attach user info to request
+        // Check if device still exists and belongs to the user
+        $device = Device::where('device_id', $payload['device_id'])
+            ->where('user_id', $payload['user_id'])
+            ->first();
+
+        if (!$device) {
+            return response()->json(['message' => 'Session revoked or device removed'], 401);
+        }
+
+        // Attach user info and device model to request
         $request->merge(['auth_user_id' => $payload['user_id']]);
         $request->merge(['auth_device_id' => $payload['device_id']]);
+        $request->merge(['auth_device' => $device]);
 
         return $next($request);
     }

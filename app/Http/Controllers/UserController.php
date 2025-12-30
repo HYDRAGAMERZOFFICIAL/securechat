@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\User;
 use App\Device;
 use App\Otp;
+use App\AuditLog;
+use App\RefreshToken;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -17,6 +19,18 @@ class UserController extends Controller
     public function __construct()
     {
         $this->tokenSecret = config('app.key');
+    }
+
+    private function logEvent(Request $request, string $event, ?string $userId = null, ?string $deviceId = null, array $metadata = [])
+    {
+        AuditLog::create([
+            'user_id' => $userId,
+            'device_id' => $deviceId,
+            'event' => $event,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->header('User-Agent'),
+            'metadata' => $metadata
+        ]);
     }
 
     public function index()
@@ -37,6 +51,8 @@ class UserController extends Controller
                 return $this->register($request);
             case 'login':
                 return $this->login($request);
+            case 'refresh_token':
+                return $this->handleRefreshToken($request);
             default:
                 return response()->json(['message' => 'Invalid action'], 400);
         }
@@ -69,6 +85,8 @@ class UserController extends Controller
             'expires_at' => now()->addMinutes(5),
         ]);
 
+        $this->logEvent($request, 'otp_requested', $phoneNumber);
+
         // LOGGING OTP FOR DEVELOPMENT (In production, send via SMS)
         Log::info("OTP for $phoneNumber: $otpCode");
 
@@ -97,20 +115,24 @@ class UserController extends Controller
             ->first();
 
         if (!$otpRecord) {
+            $this->logEvent($request, 'otp_failed_expired', $phoneNumber);
             return response()->json(['message' => 'Invalid or expired OTP'], 401);
         }
 
         if ($otpRecord->attempts >= 3) {
             $otpRecord->update(['expires_at' => now()]);
+            $this->logEvent($request, 'otp_failed_too_many_attempts', $phoneNumber);
             return response()->json(['message' => 'Too many attempts. Request a new OTP.'], 401);
         }
 
         if (!Hash::check($otpCode, $otpRecord->otp_hash)) {
             $otpRecord->increment('attempts');
+            $this->logEvent($request, 'otp_failed_incorrect', $phoneNumber);
             return response()->json(['message' => 'Incorrect OTP'], 401);
         }
 
         $otpRecord->update(['verified_at' => now()]);
+        $this->logEvent($request, 'otp_verified', $phoneNumber);
 
         $user = User::where('id', $phoneNumber)->first();
 
@@ -155,6 +177,8 @@ class UserController extends Controller
             'online' => true
         ]);
 
+        $this->logEvent($request, 'registration_success', $user->id, $request->input('device_id'));
+
         return $this->authenticateDevice($user, $request);
     }
 
@@ -175,16 +199,27 @@ class UserController extends Controller
 
         $user->update(['online' => true]);
 
-        $token = $this->generateSignedToken([
+        $this->logEvent($request, 'login_success', $user->id, $deviceId);
+
+        $accessToken = $this->generateSignedToken([
             'user_id' => $user->id,
             'device_id' => $deviceId,
             'type' => 'session'
-        ], 60 * 24 * 7); // 7 days session
+        ], 15); // 15 minutes short-lived
+
+        $refreshTokenValue = Str::random(64);
+        RefreshToken::create([
+            'user_id' => $user->id,
+            'device_id' => $deviceId,
+            'token' => $refreshTokenValue,
+            'expires_at' => now()->addDays(30),
+        ]);
 
         return response()->json([
             'status' => 'success',
             'user' => $user,
-            'access_token' => $token
+            'access_token' => $accessToken,
+            'refresh_token' => $refreshTokenValue
         ]);
     }
 
@@ -231,5 +266,154 @@ class UserController extends Controller
         }
 
         return response()->json(['message' => 'User not found'], 404);
+    }
+
+    private function handleRefreshToken(Request $request)
+    {
+        $request->validate([
+            'refresh_token' => 'required|string',
+            'device_id' => 'required|string',
+        ]);
+
+        $tokenValue = $request->input('refresh_token');
+        $deviceId = $request->input('device_id');
+
+        $refreshToken = RefreshToken::where('token', $tokenValue)
+            ->where('device_id', $deviceId)
+            ->where('revoked', false)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$refreshToken) {
+            $this->logEvent($request, 'refresh_token_failed', null, $deviceId, ['token' => $tokenValue]);
+            return response()->json(['message' => 'Invalid or expired refresh token'], 401);
+        }
+
+        $accessToken = $this->generateSignedToken([
+            'user_id' => $refreshToken->user_id,
+            'device_id' => $refreshToken->device_id,
+            'type' => 'session'
+        ], 15);
+
+        $this->logEvent($request, 'token_refreshed', $refreshToken->user_id, $deviceId);
+
+        return response()->json([
+            'access_token' => $accessToken
+        ]);
+    }
+
+    public function logout(Request $request)
+    {
+        $deviceId = $request->input('auth_device_id');
+        $userId = $request->input('auth_user_id');
+
+        Device::where('device_id', $deviceId)
+            ->where('user_id', $userId)
+            ->delete();
+
+        RefreshToken::where('device_id', $deviceId)
+            ->where('user_id', $userId)
+            ->update(['revoked' => true]);
+
+        $this->logEvent($request, 'logout', $userId, $deviceId);
+
+        return response()->json(['message' => 'Logged out successfully']);
+    }
+
+    public function revokeDevice(Request $request)
+    {
+        $request->validate([
+            'target_device_id' => 'required|string'
+        ]);
+
+        $userId = $request->input('auth_user_id');
+        $targetDeviceId = $request->input('target_device_id');
+
+        Device::where('device_id', $targetDeviceId)
+            ->where('user_id', $userId)
+            ->delete();
+
+        RefreshToken::where('device_id', $targetDeviceId)
+            ->where('user_id', $userId)
+            ->update(['revoked' => true]);
+
+        $this->logEvent($request, 'device_revoked', $userId, $request->input('auth_device_id'), ['revoked_device_id' => $targetDeviceId]);
+
+        return response()->json(['message' => 'Device revoked successfully']);
+    }
+
+    public function updateKeys(Request $request)
+    {
+        $request->validate([
+            'identity_key' => 'required|string',
+            'signed_pre_key' => 'required|string',
+            'signed_pre_key_signature' => 'required|string',
+            'signed_pre_key_id' => 'required|integer',
+            'one_time_pre_keys' => 'required|array',
+            'one_time_pre_keys.*.key_id' => 'required|integer',
+            'one_time_pre_keys.*.public_key' => 'required|string',
+        ]);
+
+        $device = $request->input('auth_device');
+        
+        $device->update([
+            'identity_key' => $request->input('identity_key'),
+            'signed_pre_key' => $request->input('signed_pre_key'),
+            'signed_pre_key_signature' => $request->input('signed_pre_key_signature'),
+            'signed_pre_key_id' => $request->input('signed_pre_key_id'),
+        ]);
+
+        // Replace one-time pre-keys
+        $device->preKeys()->delete();
+
+        foreach ($request->input('one_time_pre_keys') as $keyData) {
+            $device->preKeys()->create([
+                'key_id' => $keyData['key_id'],
+                'public_key' => $keyData['public_key'],
+            ]);
+        }
+
+        $this->logEvent($request, 'keys_updated', $device->user_id, $device->device_id);
+
+        return response()->json(['message' => 'Keys updated successfully']);
+    }
+
+    public function getUserKeys(Request $request, $targetUserId)
+    {
+        $devices = Device::where('user_id', $targetUserId)->get();
+
+        if ($devices->isEmpty()) {
+            return response()->json(['message' => 'User not found or has no active devices'], 404);
+        }
+
+        $result = [];
+        foreach ($devices as $device) {
+            $oneTimeKey = $device->preKeys()
+                ->whereNull('consumed_at')
+                ->first();
+
+            $result[] = [
+                'device_id' => $device->device_id,
+                'identity_key' => $device->identity_key,
+                'signed_pre_key' => $device->signed_pre_key,
+                'signed_pre_key_signature' => $device->signed_pre_key_signature,
+                'signed_pre_key_id' => $device->signed_pre_key_id,
+                'one_time_pre_key' => $oneTimeKey ? [
+                    'key_id' => $oneTimeKey->key_id,
+                    'public_key' => $oneTimeKey->public_key
+                ] : null
+            ];
+            
+            if ($oneTimeKey) {
+                $oneTimeKey->update(['consumed_at' => now()]);
+            }
+        }
+
+        $this->logEvent($request, 'keys_fetched', $request->input('auth_user_id'), $request->input('auth_device_id'), ['target_user_id' => $targetUserId]);
+
+        return response()->json([
+            'user_id' => $targetUserId,
+            'devices' => $result
+        ]);
     }
 }
