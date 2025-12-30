@@ -90,3 +90,13 @@
 #35 C:\\laragon\\www\\securechat\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))
 #36 {main}
 "} 
+[2025-12-30 15:32:27] local.ERROR: There are no commands defined in the "reverb" namespace. {"exception":"[object] (Symfony\\Component\\Console\\Exception\\NamespaceNotFoundException(code: 0): There are no commands defined in the \"reverb\" namespace. at C:\\laragon\\www\\securechat\\vendor\\symfony\\console\\Application.php:694)
+[stacktrace]
+#0 C:\\laragon\\www\\securechat\\vendor\\symfony\\console\\Application.php(743): Symfony\\Component\\Console\\Application->findNamespace('reverb')
+#1 C:\\laragon\\www\\securechat\\vendor\\symfony\\console\\Application.php(298): Symfony\\Component\\Console\\Application->find('reverb:install')
+#2 C:\\laragon\\www\\securechat\\vendor\\symfony\\console\\Application.php(195): Symfony\\Component\\Console\\Application->doRun(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#3 C:\\laragon\\www\\securechat\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Console\\Kernel.php(198): Symfony\\Component\\Console\\Application->run(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#4 C:\\laragon\\www\\securechat\\vendor\\laravel\\framework\\src\\Illuminate\\Foundation\\Application.php(1235): Illuminate\\Foundation\\Console\\Kernel->handle(Object(Symfony\\Component\\Console\\Input\\ArgvInput), Object(Symfony\\Component\\Console\\Output\\ConsoleOutput))
+#5 C:\\laragon\\www\\securechat\\artisan(16): Illuminate\\Foundation\\Application->handleCommand(Object(Symfony\\Component\\Console\\Input\\ArgvInput))
+#6 {main}
+"} 

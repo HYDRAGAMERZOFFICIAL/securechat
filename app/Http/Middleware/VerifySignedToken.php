@@ -6,6 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Device;
+use App\User;
+use Illuminate\Support\Facades\Auth;
 
 class VerifySignedToken
 {
@@ -31,6 +33,14 @@ class VerifySignedToken
         if (!$device) {
             return response()->json(['message' => 'Session revoked or device removed'], 401);
         }
+
+        $user = User::find($payload['user_id']);
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 401);
+        }
+
+        // Log the user in for the current request
+        Auth::login($user);
 
         // Attach user info and device model to request
         $request->merge(['auth_user_id' => $payload['user_id']]);

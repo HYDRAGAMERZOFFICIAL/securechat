@@ -7,6 +7,7 @@ use App\Device;
 use App\Otp;
 use App\AuditLog;
 use App\RefreshToken;
+use App\Events\DeviceLinking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -415,5 +416,55 @@ class UserController extends Controller
             'user_id' => $targetUserId,
             'devices' => $result
         ]);
+    }
+
+    public function update(Request $request)
+    {
+        $request->validate([
+            'username' => 'nullable|string|min:3',
+            'profile_picture' => 'nullable|string',
+        ]);
+
+        $userId = $request->input('auth_user_id');
+        $user = User::find($userId);
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        $user->update($request->only(['username', 'profile_picture']));
+
+        $this->logEvent($request, 'profile_updated', $userId, $request->input('auth_device_id'));
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user
+        ]);
+    }
+
+    public function getDevices(Request $request)
+    {
+        $userId = $request->input('auth_user_id');
+        $currentDeviceId = $request->input('auth_device_id');
+
+        $devices = Device::where('user_id', $userId)->get();
+
+        return response()->json($devices->map(function ($device) use ($currentDeviceId) {
+            $device->is_current = $device->device_id === $currentDeviceId;
+            return $device;
+        }));
+    }
+
+    public function linkSignal(Request $request)
+    {
+        $request->validate([
+            'link_code' => 'required|string',
+            'data' => 'required|array',
+            'type' => 'required|string',
+        ]);
+
+        broadcast(new DeviceLinking($request->input('link_code'), $request->input('data'), $request->input('type')))->toOthers();
+
+        return response()->json(['message' => 'Linking signal sent']);
     }
 }
