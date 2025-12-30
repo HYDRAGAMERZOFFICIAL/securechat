@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost/securechat/api/index.php';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/securechat/api/index.php';
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const url = `${API_BASE_URL}/${endpoint}`;
