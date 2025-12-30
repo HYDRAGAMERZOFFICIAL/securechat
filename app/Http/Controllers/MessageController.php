@@ -68,6 +68,26 @@ class MessageController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        // Check for blocks in private chats
+        $chat = Chat::find($chatId);
+        if ($chat->type === 'private') {
+            $otherMember = ChatMember::where('chat_id', $chatId)
+                ->where('user_id', '!=', $userId)
+                ->first();
+            
+            if ($otherMember) {
+                $recipient = User::find($otherMember->user_id);
+                if ($recipient && $recipient->hasBlocked($userId)) {
+                    return response()->json(['message' => 'You are blocked by this user'], 403);
+                }
+                
+                $sender = User::find($userId);
+                if ($sender && $sender->hasBlocked($otherMember->user_id)) {
+                    return response()->json(['message' => 'Unblock this user to send messages'], 403);
+                }
+            }
+        }
+
         $message = Message::create([
             'id' => $request->input('id', (string) Str::uuid()),
             'chat_id' => $chatId,

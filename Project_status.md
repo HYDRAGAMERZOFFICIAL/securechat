@@ -1,129 +1,104 @@
-
 # SecureChat Project Status
 
 This document outlines the features that have been implemented and those that are still pending for the SecureChat application.
 
 ## 1. AUTHENTICATION & USER MANAGEMENT
 
-- [✅] **Real OTP service (SMS gateway integration)**: Implemented using Firebase Authentication.
-- [✅] **OTP verification backend**: Handled by Firebase Authentication.
-- [✅] **JWT / session token handling**: Handled automatically by the Firebase SDK.
-- [✅] **User persistence in database**: User profile data is saved to Firestore on signup.
-- [❌] **Device binding per login**: Not implemented.
-- [✅] **Session expiry & refresh logic**: Handled automatically by the Firebase SDK.
+- [✅] **OTP service**: Implemented custom PHP OTP logic with rate limiting.
+- [✅] **OTP verification backend**: Implemented in `UserController`.
+- [✅] **JWT / session token handling**: Custom signed token implementation with Refresh Tokens.
+- [✅] **User persistence in database**: MySQL users table.
+- [✅] **Device binding per login**: Implemented in `devices` table.
+- [✅] **Session expiry & refresh logic**: Implemented.
 
 ## 2. BACKEND CORE (LARAVEL)
 
 - [✅] **Backend API Layer**: Implemented using Laravel Controllers and API Routes.
-- [✅] **Real-time Communication**: Implemented via polling (planned for WebSockets/Pusher).
-- [✅] **Database Schema**: Implemented via Laravel Migrations.
+- [✅] **Real-time Communication**: Implemented via Laravel Reverb (WebSockets).
+- [✅] **Database Schema**: Implemented via Laravel Migrations for all core entities.
 
 ## 3. DATABASE & STORAGE (MYSQL)
 
-- [✅] **User database schema**: Implemented. Users are stored in `users` table.
-- [✅] **Chats & messages schema**: Implemented. Chats and Messages stored in respective tables.
-- [❌] **Message receipts storage**: Not implemented.
-- [✅] **Group membership tables**: Implemented via `members` array in chat documents for efficient reads and security rules.
-- [❌] **Media metadata tables**: Not implemented.
-- [❌] **Status & status views tables**: Not implemented.
-- [❌] **Call logs table**: Not implemented.
-- [❌] **Device registry table**: Not implemented.
-- [❌] **Audit & abuse logs**: Not implemented.
+- [✅] **User database schema**: Implemented.
+- [✅] **Chats & messages schema**: Implemented.
+- [✅] **Message receipts storage**: Implemented (`message_receipts` table).
+- [✅] **Group membership tables**: Implemented (`chat_members` table).
+- [✅] **Media metadata tables**: Implemented (`media` table).
+- [✅] **Status & status views tables**: Implemented (`statuses`, `status_views` tables).
+- [✅] **Call logs table**: Implemented (`calls` table).
+- [✅] **Device registry table**: Implemented (`devices` table).
+- [✅] **Audit & abuse logs**: Implemented (`audit_logs` table).
 
 ## 4. REAL-TIME MESSAGING
 
-- [✅] **Real-time message delivery**: Implemented using Firestore `onSnapshot`.
-- [✅] **Message routing logic**: Basic implementation via Firestore collections.
+- [✅] **Real-time message delivery**: Implemented using Laravel Echo & Reverb.
+- [✅] **Message routing logic**: Implemented in `MessageController`.
 - [❌] **Offline message queue**: Not implemented.
 - [❌] **Message retry mechanism**: Not implemented.
 - [❌] **Message deduplication**: Not implemented.
-- [❌] **Presence (online/offline) tracking**: Not implemented.
+- [❌] **Presence (online/offline) tracking**: Partially implemented (login/logout updates, but no heartbeat).
 
 ## 5. END-TO-END ENCRYPTION (CRITICAL)
 
-- [❌] Signal Protocol implementation
-- [❌] Public/private key generation
-- [❌] Per-device encryption keys
-- [❌] Key exchange mechanism
-- [❌] Forward secrecy
-- [❌] Secure key storage (client side)
-
-**⚠️ Current lock icon is visual only, not real encryption.**
+- [✅] **Key generation infrastructure (Backend)**: Implemented (Pre-keys, Identity keys storage).
+- [❌] **Signal Protocol implementation (Frontend)**: Not implemented.
+- [❌] **Key exchange mechanism (Frontend)**: Not implemented.
+- [❌] **Forward secrecy**: Planned via Signal Protocol.
+- [❌] **Secure key storage (client side)**: Not implemented.
 
 ## 6. MEDIA HANDLING
 
-- [❌] File upload backend
-- [❌] Media compression pipeline
-- [❌] Object storage (S3 / Cloudinary)
-- [❌] CDN delivery
-- [❌] Media download security
-- [❌] Virus / file validation
+- [✅] **File upload backend**: Implemented in `MediaController`.
+- [❌] **Media compression pipeline**: Not implemented.
+- [✅] **Object storage**: Local storage implemented (S3/Cloudinary pending).
+- [❌] **CDN delivery**: Not implemented.
+- [✅] **Media download security**: Implemented via membership checks.
+- [❌] **Virus / file validation**: Not implemented.
 
 ## 7. GROUP CHAT LOGIC
 
-- [✅] **Group persistence**: Groups are saved in the `chats` collection.
-- [❌] **Admin vs member roles**: Not implemented.
-- [✅] **Group message fan-out logic**: Handled automatically by Firestore.
-- [✅] **Group permissions enforcement**: Basic rules in place via Firestore Security Rules.
-- [✅] **Group metadata storage**: Implemented in chat documents.
+- [✅] **Group persistence**: Implemented.
+- [✅] **Admin vs member roles**: Implemented in backend, needs UI enforcement.
+- [✅] **Group message fan-out logic**: Handled by WebSockets.
+- [✅] **Group permissions enforcement**: Implemented in `ChatController`.
 
 ## 8. STATUS (STORIES SYSTEM)
 
-- [❌] Status upload backend
-- [❌] 24-hour auto-expiry jobs
-- [❌] Status view tracking
-- [❌] Status privacy filtering
-- [❌] Media storage for statuses
+- [✅] **Status upload backend**: Implemented.
+- [❌] **24-hour auto-expiry jobs**: Migration exists but scheduled job missing.
+- [✅] **Status view tracking**: Implemented.
+- [✅] **Status privacy filtering**: Implemented (contacts only).
 
 ## 9. VOICE & VIDEO CALLING
 
-- [❌] WebRTC implementation
-- [❌] STUN server configuration
-- [❌] TURN relay server
-- [❌] Call signaling backend
-- [❌] Call lifecycle management
-- [❌] Audio/video stream handling
+- [✅] **Call signaling backend**: Implemented via WebSockets.
+- [❌] **WebRTC implementation (Frontend)**: Not implemented.
+- [✅] **Call logs**: Implemented.
 
 ## 10. NOTIFICATIONS & BACKGROUND SYNC
 
-- [❌] Push notifications (Web Push / FCM)
-- [❌] Background message sync
-- [❌] Cross-device unread sync
-- [❌] Server-side notification logic
+- [✅] **Push notifications (Web Push)**: Infrastructure exists (`push_subscriptions`), needs FCM/OneSignal integration.
+- [❌] **Background message sync**: Not implemented.
+- [✅] **Cross-device unread sync**: Implemented via `/api/sync`.
 
 ## 11. MULTI-DEVICE SUPPORT
 
-- [❌] QR-based device linking
-- [❌] Device key synchronization
-- [❌] Message fan-out to all devices
-- [❌] Device revocation logic
+- [❌] **QR-based device linking**: UI exists, logic missing.
+- [❌] **Device key synchronization**: Not implemented.
+- [✅] **Device revocation logic**: Implemented.
 
 ## 12. PRIVACY, BLOCKING & ABUSE CONTROL
 
-- [❌] Block enforcement logic
-- [❌] Report handling backend
-- [❌] Rate limiting
-- [❌] Spam detection
-- [❌] Abuse scoring system
+- [✅] **Block enforcement logic**: Implemented in `PrivacyController`.
+- [✅] **Report handling backend**: Implemented.
+- [❌] **Rate limiting**: Basic Laravel rate limiting exists, but needs fine-tuning for messaging.
 
 ## 13. PERFORMANCE & SCALING
 
-- [❌] Redis caching
-- [❌] Message batching
-- [❌] Load balancing
-- [❌] Horizontal scaling strategy
+- [❌] **Redis caching**: Not implemented.
+- [❌] **Message batching**: Not implemented.
 
 ## 14. DEVOPS & DEPLOYMENT
 
-- [❌] Docker setup
-- [❌] Environment configuration (.env)
-- [❌] CI/CD pipeline
-- [❌] Monitoring (logs, metrics)
-- [❌] Production deployment
-
-## 15. COMPLIANCE & SAFETY
-
-- [❌] Data retention policies
-- [❌] GDPR readiness
-- [❌] User data deletion flow
-- [❌] Backup & recovery strategy
+- [❌] **Docker setup**: Not implemented.
+- [❌] **CI/CD pipeline**: Not implemented.

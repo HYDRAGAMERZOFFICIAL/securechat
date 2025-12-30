@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Status;
 use App\StatusView;
 use App\Contact;
+use App\BlockedUser;
 use Illuminate\Http\Request;
 
 class StatusController extends Controller
@@ -15,7 +16,14 @@ class StatusController extends Controller
         
         // Get contacts' user IDs
         $contactIds = Contact::where('user_id', $userId)->pluck('contact_id');
-        $relevantUserIds = $contactIds->push($userId);
+        
+        // Exclude users who blocked me or I blocked
+        $blockedMe = BlockedUser::where('blocked_id', $userId)->pluck('user_id');
+        $blockedByMe = BlockedUser::where('user_id', $userId)->pluck('blocked_id');
+        
+        $excludedIds = $blockedMe->merge($blockedByMe)->unique();
+        
+        $relevantUserIds = $contactIds->diff($excludedIds)->push($userId);
 
         $statuses = Status::active()
             ->whereIn('user_id', $relevantUserIds)

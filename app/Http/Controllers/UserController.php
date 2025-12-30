@@ -467,4 +467,19 @@ class UserController extends Controller
 
         return response()->json(['message' => 'Linking signal sent']);
     }
+
+    public function heartbeat(Request $request)
+    {
+        $userId = $request->input('auth_user_id');
+        $deviceId = $request->input('auth_device_id');
+        $device = $request->input('auth_device');
+
+        if ($device) {
+            $device->update(['last_active_at' => now()]);
+        }
+
+        User::where('id', $userId)->update(['online' => true]);
+
+        return response()->json(['status' => 'ok', 'server_time' => now()]);
+    }
 }

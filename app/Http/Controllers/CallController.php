@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Call;
 use App\Events\CallSignaling;
+use App\User;
 use Illuminate\Http\Request;
 
 class CallController extends Controller
@@ -31,6 +32,17 @@ class CallController extends Controller
 
         $senderId = $request->input('auth_user_id');
         $receiverId = $request->input('receiver_id');
+
+        // Check for blocks
+        $recipient = User::find($receiverId);
+        if ($recipient && $recipient->hasBlocked($senderId)) {
+            return response()->json(['message' => 'You are blocked by this user'], 403);
+        }
+
+        $sender = User::find($senderId);
+        if ($sender && $sender->hasBlocked($receiverId)) {
+            return response()->json(['message' => 'Unblock this user to call them'], 403);
+        }
 
         broadcast(new CallSignaling($receiverId, $senderId, $request->input('data'), $request->input('type')))->toOthers();
 

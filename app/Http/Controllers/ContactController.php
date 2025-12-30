@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contact;
 use App\User;
+use App\BlockedUser;
 use Illuminate\Http\Request;
 
 class ContactController extends Controller
@@ -28,9 +29,14 @@ class ContactController extends Controller
             'phone_numbers.*' => 'required|string',
         ]);
 
+        $userId = $request->input('auth_user_id');
         $numbers = $request->input('phone_numbers');
         
+        // Exclude users who blocked me
+        $blockedMe = BlockedUser::where('blocked_id', $userId)->pluck('user_id');
+        
         $existingUsers = User::whereIn('id', $numbers)
+            ->whereNotIn('id', $blockedMe)
             ->get(['id', 'username', 'profile_picture', 'online']);
 
         return response()->json($existingUsers);
