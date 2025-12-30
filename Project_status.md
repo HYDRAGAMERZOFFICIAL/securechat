@@ -12,17 +12,16 @@ This document outlines the features that have been implemented and those that ar
 - [❌] **Device binding per login**: Not implemented.
 - [✅] **Session expiry & refresh logic**: Handled automatically by the Firebase SDK.
 
-## 2. BACKEND CORE (SERVERLESS)
+## 2. BACKEND CORE (LARAVEL)
 
-- [✅] **Backend API Layer**: Implemented using Next.js Server Actions and Route Handlers.
-- [✅] **Real-time Communication**: Implemented using Firestore's real-time listeners.
-- [❌] **Advanced Request Validation**: Pending implementation.
-- [❌] **Advanced Error Handling & Logging**: Basic implementation via Firebase.
+- [✅] **Backend API Layer**: Implemented using Laravel Controllers and API Routes.
+- [✅] **Real-time Communication**: Implemented via polling (planned for WebSockets/Pusher).
+- [✅] **Database Schema**: Implemented via Laravel Migrations.
 
-## 3. DATABASE & STORAGE (FIRESTORE)
+## 3. DATABASE & STORAGE (MYSQL)
 
-- [✅] **User database schema**: Implemented. Users are stored in a `users` collection.
-- [✅] **Chats & messages schema**: Implemented. Chats are in a `chats` collection, with messages in a subcollection.
+- [✅] **User database schema**: Implemented. Users are stored in `users` table.
+- [✅] **Chats & messages schema**: Implemented. Chats and Messages stored in respective tables.
 - [❌] **Message receipts storage**: Not implemented.
 - [✅] **Group membership tables**: Implemented via `members` array in chat documents for efficient reads and security rules.
 - [❌] **Media metadata tables**: Not implemented.

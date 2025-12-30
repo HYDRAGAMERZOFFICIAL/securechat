@@ -1,4 +1,12 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost/securechat/api/index.php';
+declare global {
+    interface Window {
+        Laravel: {
+            apiUrl: string;
+        }
+    }
+}
+
+const API_BASE_URL = window.Laravel?.apiUrl || (import.meta.env.VITE_API_URL as string) || '/api';
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const url = `${API_BASE_URL}/${endpoint}`;
@@ -48,10 +56,4 @@ export const api = {
             body: JSON.stringify(data),
         }),
     },
-    ai: {
-        generate: (prompt: string) => apiFetch('ai', {
-            method: 'POST',
-            body: JSON.stringify({ prompt }),
-        }),
-    }
 };

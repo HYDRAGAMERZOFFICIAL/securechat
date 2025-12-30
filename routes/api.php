@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\AIController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\UserController;
@@ -15,5 +14,3 @@ Route::post('/chats', [ChatController::class, 'store']);
 
 Route::get('/messages', [MessageController::class, 'index']);
 Route::post('/messages', [MessageController::class, 'store']);
-
-Route::post('/ai', [AIController::class, 'generate']);
