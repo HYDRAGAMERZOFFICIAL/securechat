@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { api } from "@/lib/api";
 
 export function LoginPage() {
-  const { login, register } = useAuth();
+  const { requestOtp, verifyOtp, register } = useAuth();
   const { toast } = useToast();
 
   const [step, setStep] = useState<"phone" | "otp" | "profile">("phone");
@@ -48,15 +48,9 @@ export function LoginPage() {
     const fullPhoneNumber = `${countryCode}${phoneNumber}`;
 
     try {
-      // In this version, we'll simulate the OTP process
-      // We'll check if user exists in our PHP backend
-      try {
-        await login(fullPhoneNumber);
-        // If login succeeds, it means user exists and is now logged in
-      } catch (err) {
-        // If login fails (404), we proceed to OTP then Profile
-        setStep("otp");
-      }
+      const res = await requestOtp(fullPhoneNumber);
+      toast({ title: "OTP Sent", description: res.message });
+      setStep("otp");
     } catch (error: any) {
       console.error(error);
       toast({
@@ -72,18 +66,30 @@ export function LoginPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    // Simulate OTP verification
-    setTimeout(() => {
-        setStep("profile");
+    const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+    const otpString = otp.join('');
+
+    try {
+        const res = await verifyOtp(fullPhoneNumber, otpString);
+        if (res.status === 'registration_required') {
+            setStep("profile");
+        } else if (res.status === 'success') {
+            toast({ title: "Welcome back!", description: "Successfully logged in." });
+        }
+    } catch (error: any) {
+        toast({
+            variant: "destructive",
+            title: "Verification failed",
+            description: error.message
+        });
+    } finally {
         setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const fullPhoneNumber = `${countryCode}${phoneNumber}`;
 
     if (profileName.trim() === '') {
         toast({ variant: "destructive", title: "Profile Name is required" });
@@ -92,7 +98,7 @@ export function LoginPage() {
     }
     
     try {
-        await register(fullPhoneNumber, profileName, profilePic);
+        await register(profileName, profilePic);
         toast({ title: "Success", description: "Profile created successfully." });
     } catch (error: any) {
       console.error("Error creating profile", error);

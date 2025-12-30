@@ -10,12 +10,20 @@ const API_BASE_URL = window.Laravel?.apiUrl || (import.meta.env.VITE_API_URL as 
 
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     const url = `${API_BASE_URL}/${endpoint}`;
+    const token = localStorage.getItem('access_token');
+    
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+    };
+
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(url, {
         ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
+        headers,
     });
 
     if (!response.ok) {
@@ -29,13 +37,28 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 export const api = {
     users: {
         getAll: () => apiFetch('users'),
-        login: (id: string) => apiFetch('users', {
+        requestOtp: (phoneNumber: string) => apiFetch('users', {
             method: 'POST',
-            body: JSON.stringify({ action: 'login', id }),
+            body: JSON.stringify({ action: 'request_otp', phone_number: phoneNumber }),
         }),
-        register: (id: string, username: string, profilePicture: string | null) => apiFetch('users', {
+        verifyOtp: (phoneNumber: string, otp: string, deviceId: string, deviceName: string) => apiFetch('users', {
             method: 'POST',
-            body: JSON.stringify({ action: 'register', id, username, profile_picture: profilePicture }),
+            body: JSON.stringify({ action: 'verify_otp', phone_number: phoneNumber, otp, device_id: deviceId, device_name: deviceName }),
+        }),
+        register: (regToken: string, username: string, profilePicture: string | null, deviceId: string, deviceName: string) => apiFetch('users', {
+            method: 'POST',
+            body: JSON.stringify({ 
+                action: 'register', 
+                registration_token: regToken, 
+                username, 
+                profile_picture: profilePicture,
+                device_id: deviceId,
+                device_name: deviceName
+            }),
+        }),
+        login: (id: string, deviceId: string, deviceName: string) => apiFetch('users', {
+            method: 'POST',
+            body: JSON.stringify({ action: 'login', id, device_id: deviceId, device_name: deviceName }),
         }),
         update: (id: string, username: string, profilePicture: string | null) => apiFetch('users', {
             method: 'PUT',

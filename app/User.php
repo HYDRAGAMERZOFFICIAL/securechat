@@ -9,4 +9,9 @@ class User extends Model
     protected $fillable = ['id', 'username', 'profile_picture', 'online'];
     public $incrementing = false;
     protected $keyType = 'string';
+
+    public function devices()
+    {
+        return $this->hasMany(Device::class);
+    }
 }
