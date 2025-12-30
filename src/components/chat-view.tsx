@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { Chat, Message, User } from "@/lib/data";
 import {
   MoreVertical,
@@ -30,8 +30,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import { collection, query, orderBy } from "firebase/firestore";
+import { useAuth } from "@/components/auth-context";
+import { api } from "@/lib/api";
 import { format } from 'date-fns';
 
 interface ChatViewProps {
@@ -43,17 +43,28 @@ interface ChatViewProps {
 
 export function ChatView({ chat, onClose, onSendMessage, allUsers }: ChatViewProps) {
   const [messageText, setMessageText] = useState("");
-  const { user: currentUser } = useUser();
-  const firestore = useFirestore();
+  const { user: currentUser } = useAuth();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const messagesQuery = useMemoFirebase(
-    () =>
-      chat
-        ? query(collection(firestore, "chats", chat.id, "messages"), orderBy("timestamp", "asc"))
-        : null,
-    [firestore, chat]
-  );
-  const { data: messages, isLoading } = useCollection<Message>(messagesQuery);
+  useEffect(() => {
+    if (chat) {
+        fetchMessages();
+        const interval = setInterval(fetchMessages, 3000);
+        return () => clearInterval(interval);
+    }
+  }, [chat]);
+
+  const fetchMessages = async () => {
+    try {
+        const data = await api.messages.getByChatId(chat.id);
+        setMessages(data);
+    } catch (error) {
+        console.error("Failed to fetch messages", error);
+    } finally {
+        setIsLoading(false);
+    }
+  };
   
   const userDetails = useMemo(() => {
     const details = new Map<string, Partial<User>>();
@@ -80,25 +91,18 @@ export function ChatView({ chat, onClose, onSendMessage, allUsers }: ChatViewPro
   };
 
   const formatTimestamp = (timestamp: any): string => {
-    if (!timestamp) {
-      return '';
-    }
-    if (timestamp && typeof timestamp.toDate === 'function') {
-      return format(timestamp.toDate(), 'p');
-    }
+    if (!timestamp) return '';
     try {
         const date = new Date(timestamp);
         if(!isNaN(date.getTime())) {
             return format(date, 'p');
         }
-    } catch(e) {
-        // Not a valid date string
-    }
+    } catch(e) {}
     return String(timestamp);
   };
   
-  const chatName = chat.type === 'private' ? allUsers.get(chat.members.find(m => m !== currentUser?.uid)!)?.username : chat.name;
-  const chatAvatar = chat.type === 'private' ? allUsers.get(chat.members.find(m => m !== currentUser?.uid)!)?.profilePicture : chat.avatar;
+  const chatName = chat.type === 'private' ? allUsers.get(chat.members.find(m => m !== currentUser?.id)!)?.username : chat.name;
+  const chatAvatar = chat.type === 'private' ? allUsers.get(chat.members.find(m => m !== currentUser?.id)!)?.profilePicture : chat.avatar;
 
 
   return (

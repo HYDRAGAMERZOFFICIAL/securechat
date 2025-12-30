@@ -1,19 +1,18 @@
 "use client";
 
-import { useAuth, useUser } from "@/firebase";
+import { useAuth } from "@/components/auth-context";
 import { ChatInterface } from "@/components/chat-interface";
 import { LoginPage } from "@/components/login-page";
 import { Loader2 } from "lucide-react";
 
 export default function Home() {
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
+  const { user, isLoading, logout } = useAuth();
 
   const handleSignOut = () => {
-    auth.signOut();
+    logout();
   };
 
-  if (isUserLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin" />

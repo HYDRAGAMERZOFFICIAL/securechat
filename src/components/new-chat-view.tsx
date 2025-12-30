@@ -7,15 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserAvatar } from "./user-avatar";
-import { useUser } from "@/firebase";
+import { useAuth } from "@/components/auth-context";
 import { useState } from "react";
 
 export function NewChatView({ users, onSelectUser, onClose }: { users: User[]; onSelectUser: (user: User) => void; onClose: () => void; }) {
-  const { user: currentUser } = useUser();
+  const { user: currentUser } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredUsers = users
-    .filter(u => u.id !== currentUser?.uid)
+    .filter(u => u.id !== currentUser?.id)
     .filter(u => u.username?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (

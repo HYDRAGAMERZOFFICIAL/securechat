@@ -7,10 +7,10 @@ import { UserAvatar } from "./user-avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Badge } from "./ui/badge";
 import { Check, CheckCheck } from "lucide-react";
-import { useCollection, useFirestore, useUser, useMemoFirebase } from "@/firebase";
+import { useAuth } from "@/components/auth-context";
 import { formatDistanceToNow } from 'date-fns';
-import { collection, query } from "firebase/firestore";
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 interface ChatListProps {
   chats: Chat[];
@@ -20,11 +20,20 @@ interface ChatListProps {
 }
 
 export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatListProps) {
-  const { user: currentUser } = useUser();
-  const firestore = useFirestore();
-  
-  const usersQuery = useMemoFirebase(() => query(collection(firestore, "users")), [firestore]);
-  const { data: users } = useCollection<User>(usersQuery);
+  const { user: currentUser } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+        try {
+            const data = await api.users.getAll();
+            setUsers(data);
+        } catch (error) {
+            console.error("Failed to fetch users", error);
+        }
+    };
+    fetchUsers();
+  }, []);
 
   const usersById = useMemo(() => {
     const map = new Map<string, User>();
@@ -33,7 +42,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
   }, [users]);
 
   const renderStatus = (message: Message | undefined) => {
-    if (!message || message.senderId !== currentUser?.uid) return null;
+    if (!message || message.senderId !== currentUser?.id) return null;
     
     const className = "h-4 w-4 mr-1";
     if (message.status === "read") {
@@ -48,24 +57,16 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
   const formatTimestamp = (timestamp: any) => {
     if (!timestamp) return '';
     try {
-      const date = timestamp.toDate();
-      return formatDistanceToNow(date, { addSuffix: true });
-    } catch (e) {
-      if (typeof timestamp === 'string') {
-        try {
-          const parsedDate = new Date(timestamp);
-          if(!isNaN(parsedDate.getTime())){
-             return formatDistanceToNow(parsedDate, { addSuffix: true });
-          }
-        } catch (parseError) {}
+      const parsedDate = new Date(timestamp);
+      if(!isNaN(parsedDate.getTime())){
+         return formatDistanceToNow(parsedDate, { addSuffix: true });
       }
-      return 'just now';
-    }
+    } catch (parseError) {}
+    return 'just now';
   };
   
   const getTime = (ts: any) => {
     if (!ts) return 0;
-    if (typeof ts.toDate === 'function') return ts.toDate().getTime();
     if (ts instanceof Date) return ts.getTime();
     return new Date(ts).getTime() || 0;
   };
@@ -96,7 +97,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
           let chatAvatar = chat.avatar;
 
           if(chat.type === 'private') {
-            const otherUserId = chat.members.find(uid => uid !== currentUser?.uid);
+            const otherUserId = chat.members.find(uid => uid !== currentUser?.id);
             const otherUser = otherUserId ? usersById.get(otherUserId) : undefined;
             if(otherUser) {
               chatName = otherUser.username;

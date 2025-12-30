@@ -5,7 +5,7 @@ import type { Message, User } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { UserAvatar } from "./user-avatar";
 import { Check, CheckCheck } from "lucide-react";
-import { useUser } from "@/firebase";
+import { useAuth } from "@/components/auth-context";
 
 import { format } from "date-fns";
 
@@ -15,13 +15,13 @@ interface MessageBubbleProps {
 }
 
 export function MessageBubble({ message, sender }: MessageBubbleProps) {
-  const { user: currentUser } = useUser();
-  const isCurrentUser = message.senderId === currentUser?.uid;
+  const { user: currentUser } = useAuth();
+  const isCurrentUser = message.senderId === currentUser?.id;
 
   const formatTime = (ts: any) => {
     if (!ts) return '';
     try {
-        const date = ts.toDate ? ts.toDate() : (ts instanceof Date ? ts : new Date(ts));
+        const date = ts instanceof Date ? ts : new Date(ts);
         return format(date, "HH:mm");
     } catch (e) {
         return '';

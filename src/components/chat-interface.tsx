@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   MessageCircle,
   History,
@@ -12,18 +12,8 @@ import {
   MessageSquarePlus,
   Laptop,
 } from "lucide-react";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  serverTimestamp,
-  updateDoc,
-  doc,
-} from "firebase/firestore";
-import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase";
-import { addDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useAuth } from "@/components/auth-context";
+import { api } from "@/lib/api";
 
 import { calls, type Chat, type User, type Status } from "@/lib/data";
 import { cn } from "@/lib/utils";
@@ -60,27 +50,50 @@ export function ChatInterface({
 }: {
   onSignOut: () => void;
 }) {
-  const { user: currentUser } = useUser();
-  const firestore = useFirestore();
+  const { user: currentUser } = useAuth();
 
   const [view, setView] = useState<View>("chats");
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [viewingStatus, setViewingStatus] = useState<Status[] | null>(null);
+  const [chats, setChats] = useState<Chat[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoadingChats, setIsLoadingChats] = useState(true);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
 
-  const chatsQuery = useMemoFirebase(
-    () =>
-      currentUser
-        ? query(
-            collection(firestore, "chats"),
-            where("members", "array-contains", currentUser.uid)
-          )
-        : null,
-    [firestore, currentUser]
-  );
-  const { data: chats, isLoading: isLoadingChats } = useCollection<Chat>(chatsQuery);
+  useEffect(() => {
+    if (currentUser) {
+        fetchChats();
+        fetchUsers();
+        // Polling for updates (simple alternative to real-time)
+        const interval = setInterval(() => {
+            fetchChats();
+        }, 5000);
+        return () => clearInterval(interval);
+    }
+  }, [currentUser]);
 
-  const usersQuery = useMemoFirebase(() => query(collection(firestore, "users")), [firestore]);
-  const { data: users, isLoading: isLoadingUsers } = useCollection<User>(usersQuery);
+  const fetchChats = async () => {
+    if (!currentUser) return;
+    try {
+        const data = await api.chats.getAll(currentUser.id);
+        setChats(data);
+    } catch (error) {
+        console.error("Failed to fetch chats", error);
+    } finally {
+        setIsLoadingChats(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+        const data = await api.users.getAll();
+        setUsers(data);
+    } catch (error) {
+        console.error("Failed to fetch users", error);
+    } finally {
+        setIsLoadingUsers(false);
+    }
+  };
 
   const selectedChat = chats?.find((c) => c.id === selectedChatId);
 
@@ -93,72 +106,54 @@ export function ChatInterface({
     setSelectedChatId(chat.id);
     setView("chats");
     setViewingStatus(null);
-    if (chat.unreadCount > 0) {
-        const chatRef = doc(firestore, "chats", chat.id);
-        updateDoc(chatRef, { unreadCount: 0 });
-    }
+    // Unread count management would be an API call in a full implementation
   };
 
   const handleSelectNewUser = async (user: User) => {
     if (!currentUser) return;
 
-    // Check if a chat with this user already exists
-    const q = query(
-      collection(firestore, "chats"),
-      where("type", "==", "private"),
-      where("members", "in", [[currentUser.uid, user.id], [user.id, currentUser.uid]])
-    );
+    const existingChat = chats.find(c => c.type === 'private' && c.members.includes(user.id));
     
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-      // Existing chat found
-      setSelectedChatId(querySnapshot.docs[0].id);
+    if (existingChat) {
+      setSelectedChatId(existingChat.id);
     } else {
-      // No existing chat, create a new one
+      const id = Math.random().toString(36).substring(7);
       const newChatData = {
+        id,
         type: 'private',
         name: user.username,
         avatar: user.profilePicture,
-        members: [user.id, currentUser.uid],
-        unreadCount: 0,
-        lastMessage: null,
-        lastMessageTimestamp: null,
+        members: [user.id, currentUser.id],
       };
-      const docRef = await addDoc(collection(firestore, "chats"), newChatData);
-      setSelectedChatId(docRef.id);
+      await api.chats.create(newChatData);
+      await fetchChats();
+      setSelectedChatId(id);
     }
     setView("chats");
   };
 
-  const handleCreateGroup = (group: Omit<Chat, 'id' | 'messages' | 'unreadCount'>) => {
-    addDocumentNonBlocking(collection(firestore, "chats"), {
-      ...group,
-      unreadCount: 0,
-    }).then(docRef => {
-        if (docRef) {
-          setSelectedChatId(docRef.id);
-          setView('chats');
-        }
-    });
+  const handleCreateGroup = async (group: Omit<Chat, 'id' | 'messages' | 'unreadCount'>) => {
+    const id = Math.random().toString(36).substring(7);
+    await api.chats.create({ ...group, id });
+    await fetchChats();
+    setSelectedChatId(id);
+    setView('chats');
   };
 
-  const handleSendMessage = (text: string) => {
+  const handleSendMessage = async (text: string) => {
     if (!selectedChatId || !currentUser) return;
 
-    const messagesCol = collection(firestore, "chats", selectedChatId, "messages");
-    addDocumentNonBlocking(messagesCol, {
-      senderId: currentUser.uid,
-      text: text,
-      timestamp: serverTimestamp(),
-      status: "sent",
-    });
+    const messageId = Math.random().toString(36).substring(7);
+    const newMessage = {
+        id: messageId,
+        chat_id: selectedChatId,
+        sender_id: currentUser.id,
+        text: text,
+        status: "sent",
+    };
 
-    const chatRef = doc(firestore, "chats", selectedChatId);
-    updateDoc(chatRef, {
-        lastMessage: text,
-        lastMessageTimestamp: serverTimestamp(),
-        unreadCount: (selectedChat?.unreadCount || 0) + 1
-    });
+    await api.messages.send(newMessage);
+    fetchChats(); // Refresh last message
   };
   
   const handleViewStatus = (userId: string) => {
@@ -229,8 +224,8 @@ export function ChatInterface({
         {/* Sidebar Header */}
         <header className="p-3 border-b border-border flex items-center justify-between bg-card">
           <UserAvatar
-            src={currentUser?.photoURL ?? undefined}
-            name={currentUser?.displayName ?? undefined}
+            src={currentUser?.profilePicture ?? undefined}
+            name={currentUser?.username ?? undefined}
             className="h-10 w-10"
           />
           <div className="flex items-center gap-1">
@@ -304,13 +299,13 @@ export function ChatInterface({
       users.forEach(user => userMap.set(user.id, user));
     }
     // Add current user if not in the list
-    if (currentUser && !userMap.has(currentUser.uid)) {
-      userMap.set(currentUser.uid, {
-        id: currentUser.uid,
-        username: currentUser.displayName!,
-        profilePicture: currentUser.photoURL!,
-        name: currentUser.displayName!,
-        avatar: currentUser.photoURL!,
+    if (currentUser && !userMap.has(currentUser.id)) {
+      userMap.set(currentUser.id, {
+        id: currentUser.id,
+        username: currentUser.username!,
+        profilePicture: currentUser.profilePicture!,
+        name: currentUser.username!,
+        avatar: currentUser.profilePicture!,
         online: true,
       });
     }
@@ -320,7 +315,7 @@ export function ChatInterface({
   const selectedChatWithData = useMemo(() => {
     if (!selectedChat) return null;
     
-    const otherMemberIds = selectedChat.members.filter(m => m !== currentUser?.uid);
+    const otherMemberIds = selectedChat.members.filter(m => m !== currentUser?.id);
     let chatName = selectedChat.name;
     let chatAvatar = selectedChat.avatar;
 

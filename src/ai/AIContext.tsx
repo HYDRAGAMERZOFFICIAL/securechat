@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { api } from '@/lib/api';
 
 interface AIContextType {
   generateResponse: (prompt: string) => Promise<string>;
@@ -18,21 +19,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      // This is a placeholder for the actual AI implementation.
-      // In a real-world scenario, you would call an API route here.
-      const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate AI response');
-      }
-
-      const data = await response.json();
+      const data = await api.ai.generate(prompt);
       return data.text;
     } catch (err: any) {
       setError(err.message);

@@ -25,24 +25,12 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth, useFirestore } from "@/firebase";
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+import { useAuth } from "@/components/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
-import { doc } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
-
-
-declare global {
-  interface Window {
-    recaptchaVerifier?: RecaptchaVerifier;
-    confirmationResult?: ConfirmationResult;
-  }
-}
+import { api } from "@/lib/api";
 
 export function LoginPage() {
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { login, register } = useAuth();
   const { toast } = useToast();
 
   const [step, setStep] = useState<"phone" | "otp" | "profile">("phone");
@@ -54,50 +42,28 @@ export function LoginPage() {
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (step === 'phone' && !window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-        }
-      });
-    }
-  }, [auth, step]);
-
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     const fullPhoneNumber = `${countryCode}${phoneNumber}`;
-    const appVerifier = window.recaptchaVerifier;
-
-    if (!appVerifier) {
-      toast({
-        variant: "destructive",
-        title: "reCAPTCHA not initialized.",
-        description: "Please refresh the page.",
-      });
-      setIsSubmitting(false);
-      return;
-    }
 
     try {
-      window.confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, appVerifier);
-      setStep("otp");
+      // In this version, we'll simulate the OTP process
+      // We'll check if user exists in our PHP backend
+      try {
+        await login(fullPhoneNumber);
+        // If login succeeds, it means user exists and is now logged in
+      } catch (err) {
+        // If login fails (404), we proceed to OTP then Profile
+        setStep("otp");
+      }
     } catch (error: any) {
       console.error(error);
       toast({
         variant: "destructive",
-        title: "Failed to send OTP",
+        title: "Error",
         description: error.message || "An unknown error occurred.",
       });
-       // Reset reCAPTCHA
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.render().then((widgetId) => {
-          // @ts-ignore
-          grecaptcha.reset(widgetId);
-        });
-      }
     } finally {
       setIsSubmitting(false);
     }
@@ -106,43 +72,19 @@ export function LoginPage() {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const code = otp.join('');
     
-    if (!window.confirmationResult) {
-      toast({ variant: "destructive", title: "Verification failed.", description: "Please request a new OTP." });
-      setStep('phone');
-      setIsSubmitting(false);
-      return;
-    }
-
-    try {
-      const result = await window.confirmationResult.confirm(code);
-      const isNewUser = result.user.metadata.creationTime === result.user.metadata.lastSignInTime;
-      
-      if (isNewUser) {
+    // Simulate OTP verification
+    setTimeout(() => {
         setStep("profile");
-      } else {
-        // Existing user, sign in is complete. The useUser hook will handle navigation.
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast({ variant: "destructive", title: "Invalid OTP", description: "Please check the code and try again." });
-    } finally {
-      setIsSubmitting(false);
-    }
+        setIsSubmitting(false);
+    }, 1000);
   };
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const currentUser = auth.currentUser;
+    const fullPhoneNumber = `${countryCode}${phoneNumber}`;
 
-    if (!currentUser) {
-      toast({ variant: "destructive", title: "Authentication error", description: "No user is signed in." });
-      setIsSubmitting(false);
-      return;
-    }
-    
     if (profileName.trim() === '') {
         toast({ variant: "destructive", title: "Profile Name is required" });
         setIsSubmitting(false);
@@ -150,28 +92,13 @@ export function LoginPage() {
     }
     
     try {
-        await updateProfile(currentUser, {
-            displayName: profileName,
-            photoURL: profilePic
-        });
-
-        const userDocRef = doc(firestore, "users", currentUser.uid);
-
-        setDocumentNonBlocking(userDocRef, {
-            id: currentUser.uid,
-            username: profileName,
-            phoneNumber: currentUser.phoneNumber,
-            profilePicture: profilePic,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        }, {});
-    
+        await register(fullPhoneNumber, profileName, profilePic);
+        toast({ title: "Success", description: "Profile created successfully." });
     } catch (error: any) {
-      console.error("Error updating profile or saving to Firestore", error);
-      toast({ variant: "destructive", title: "Profile update failed", description: error.message });
+      console.error("Error creating profile", error);
+      toast({ variant: "destructive", title: "Profile creation failed", description: error.message });
     } finally {
       setIsSubmitting(false);
-      // The useUser hook will handle navigation once the auth state is updated
     }
   };
 

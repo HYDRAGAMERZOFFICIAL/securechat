@@ -9,11 +9,10 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserAvatar } from "./user-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { useUser } from "@/firebase";
-import { serverTimestamp } from "firebase/firestore";
+import { useAuth } from "@/components/auth-context";
 
 export function NewGroupView({ users, onCreateGroup, onClose }: { users: User[], onCreateGroup: (group: Omit<Chat, 'id' | 'messages' | 'unreadCount'>) => void; onClose: () => void; }) {
-  const { user: currentUser } = useUser();
+  const { user: currentUser } = useAuth();
   const [groupName, setGroupName] = useState('');
   const [groupAvatar, setGroupAvatar] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
@@ -34,9 +33,9 @@ export function NewGroupView({ users, onCreateGroup, onClose }: { users: User[],
         type: 'group' as const,
         name: groupName,
         avatar: groupAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(groupName)}&background=random`,
-        members: [currentUser.uid, ...selectedUsers.map(u => u.id)],
+        members: [currentUser.id, ...selectedUsers.map(u => u.id)],
         lastMessage: "Group created",
-        lastMessageTimestamp: serverTimestamp(),
+        lastMessageTimestamp: new Date().toISOString(),
       };
       onCreateGroup(newGroup);
     }
@@ -53,7 +52,7 @@ export function NewGroupView({ users, onCreateGroup, onClose }: { users: User[],
   };
 
   const filteredUsers = users
-    .filter(u => u.id !== currentUser?.uid)
+    .filter(u => u.id !== currentUser?.id)
     .filter(u => u.username?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (

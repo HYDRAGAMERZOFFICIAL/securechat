@@ -6,15 +6,15 @@ This repository contains the source code for the SecureChat web application, a m
 
 ## 2. Technology Stack
 
-The application is built using a modern web development stack:
+The application is built using a modern decoupled architecture:
 
--   **Framework:** Next.js (with App Router)
--   **Language:** TypeScript
--   **UI Library:** React
+-   **Frontend:** Next.js (with App Router)
+-   **Backend:** PHP (Native/Custom Routing)
+-   **Database:** MySQL (Laragon Connectivity)
 -   **Styling:** Tailwind CSS
 -   **Component Library:** ShadCN UI
 -   **Icons:** Lucide React
--   **AI Infrastructure:** React Context + Next.js API Routes
+-   **AI Infrastructure:** PHP Controller + Next.js Frontend Context
 
 ## 3. Features & Development Phases
 
@@ -79,36 +79,29 @@ The project follows a standard Next.js App Router structure. Key directories and
 
 ```
 .
+├── api/                    # PHP Backend (Laragon)
+│   ├── config/             # Database configuration
+│   ├── controllers/        # Business logic
+│   ├── migrations/         # SQL initialization scripts
+│   └── index.php           # API entry point and routing
 ├── src/
 │   ├── app/
-│   │   ├── globals.css         # Global CSS styles and Tailwind directives
-│   │   ├── layout.tsx          # Root layout for the application
-│   │   └── page.tsx            # Entry point, handles auth state and renders Login or Chat
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
 │   │
 │   ├── components/
-│   │   ├── calls-view.tsx
-│   │   ├── chat-interface.tsx  # Main component for the chat app
+│   │   ├── auth-context.tsx    # Authentication state management
+│   │   ├── chat-interface.tsx
 │   │   ├── chat-list.tsx
 │   │   ├── chat-view.tsx
-│   │   ├── linked-devices-view.tsx
-│   │   ├── login-page.tsx      # Handles the entire authentication flow
-│   │   ├── message-bubble.tsx
-│   │   ├── new-chat-view.tsx
-│   │   ├── new-group-view.tsx
-│   │   ├── status-view.tsx
-│   │   ├── status-viewer.tsx
 │   │   ├── ui/                 # Reusable ShadCN UI components
 │   │   └── user-avatar.tsx
 │   │
-│   ├── hooks/
-│   │   ├── use-mobile.tsx      # Hook to detect mobile viewports
-│   │   └── use-toast.ts        # Hook for showing toast notifications
-│   │
 │   ├── lib/
-│   │   ├── data.ts             # Mock data for users, chats, statuses, etc.
-│   │   ├── placeholder-images.json # JSON store for image URLs and metadata
-│   │   ├── placeholder-images.ts # Helper to access placeholder image data
-│   │   └── utils.ts            # Utility functions (e.g., cn for classnames)
+│   │   ├── api.ts              # API client for PHP backend
+│   │   ├── data.ts             # Type definitions
+│   │   └── utils.ts
 │   │
 │   └── ai/
 │       └── AIContext.tsx       # AI infrastructure using React Context
