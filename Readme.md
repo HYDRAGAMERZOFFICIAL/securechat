@@ -14,7 +14,7 @@ The application is built using a modern web development stack:
 -   **Styling:** Tailwind CSS
 -   **Component Library:** ShadCN UI
 -   **Icons:** Lucide React
--   **Generative AI (Planned):** Genkit
+-   **AI Infrastructure:** React Context + Next.js API Routes
 
 ## 3. Features & Development Phases
 
@@ -111,8 +111,7 @@ The project follows a standard Next.js App Router structure. Key directories and
 │   │   └── utils.ts            # Utility functions (e.g., cn for classnames)
 │   │
 │   └── ai/
-│       ├── dev.ts              # Entry point for Genkit development server
-│       └── genkit.ts           # Genkit configuration
+│       └── AIContext.tsx       # AI infrastructure using React Context
 │
 ├── next.config.ts              # Next.js configuration
 ├── package.json                # Project dependencies and scripts

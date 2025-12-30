@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseClientProvider } from "@/firebase";
+import { AIProvider } from "@/ai/AIContext";
 
 export const metadata: Metadata = {
   title: "SecureChat",
@@ -25,8 +26,10 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <FirebaseClientProvider>
-          {children}
-          <Toaster />
+          <AIProvider>
+            {children}
+            <Toaster />
+          </AIProvider>
         </FirebaseClientProvider>
       </body>
     </html>
