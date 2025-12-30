@@ -63,6 +63,13 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
     }
   };
   
+  const getTime = (ts: any) => {
+    if (!ts) return 0;
+    if (typeof ts.toDate === 'function') return ts.toDate().getTime();
+    if (ts instanceof Date) return ts.getTime();
+    return new Date(ts).getTime() || 0;
+  };
+
   if (isLoading) {
     return (
       <div className="p-4 space-y-4">
@@ -82,7 +89,7 @@ export function ChatList({ chats, selectedChat, onSelectChat, isLoading }: ChatL
   return (
     <ScrollArea className="flex-1">
       <div className="p-2">
-        {chats.sort((a, b) => (b.lastMessageTimestamp?.toDate() || 0) - (a.lastMessageTimestamp?.toDate() || 0)).map((chat) => {
+        {chats.sort((a, b) => getTime(b.lastMessageTimestamp) - getTime(a.lastMessageTimestamp)).map((chat) => {
           const lastMessage = chat.messages?.[chat.messages.length - 1];
           
           let chatName = chat.name;

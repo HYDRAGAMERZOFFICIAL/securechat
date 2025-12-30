@@ -16,8 +16,8 @@ export function StatusViewer({ statuses, onClose }: StatusViewerProps) {
   const [currentUserIndex, setCurrentUserIndex] = useState(0);
   const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
   const [progress, setProgress] = useState(0);
-  const timerRef = useRef<NodeJS.Timeout>();
-  const progressTimerRef = useRef<NodeJS.Timeout>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const allUsersWithStatus = users.filter(user => statuses.some(s => s.userId === user.id));
   
@@ -58,7 +58,7 @@ export function StatusViewer({ statuses, onClose }: StatusViewerProps) {
       const newProgress = (elapsedTime / duration) * 100;
       if (newProgress <= 100) {
         setProgress(newProgress);
-      } else {
+      } else if (progressTimerRef.current) {
         clearInterval(progressTimerRef.current);
       }
     }, 50);

@@ -33,7 +33,7 @@ export function CallsView({ calls }: CallsViewProps) {
 
           const isMissed = call.status === "missed";
           const Icon =
-            call.type === "video" ? Video : call.status === "incoming" ? PhoneIncoming : PhoneOutgoing;
+            call.type === "video" ? Video : call.direction === "incoming" ? PhoneIncoming : PhoneOutgoing;
 
           return (
             <div

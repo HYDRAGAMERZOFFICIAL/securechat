@@ -1,5 +1,5 @@
 
-import type { Timestamp } from "firebase/firestore";
+import type { Timestamp, FieldValue } from "firebase/firestore";
 
 export type User = {
   id: string;
@@ -15,7 +15,7 @@ export type Message = {
   id: string;
   senderId: string;
   text: string;
-  timestamp: Timestamp | Date | string;
+  timestamp: Timestamp | Date | string | FieldValue;
   status: "sent" | "delivered" | "read";
 };
 
@@ -28,7 +28,7 @@ export type Chat = {
   messages?: Message[];
   unreadCount: number;
   lastMessage?: string | null;
-  lastMessageTimestamp?: Timestamp | Date | null;
+  lastMessageTimestamp?: Timestamp | Date | null | FieldValue;
 };
 
 export type Status = {

@@ -130,7 +130,7 @@ export function ChatInterface({
     setView("chats");
   };
 
-  const handleCreateGroup = (group: Omit<Chat, 'id' | 'messages'>) => {
+  const handleCreateGroup = (group: Omit<Chat, 'id' | 'messages' | 'unreadCount'>) => {
     addDocumentNonBlocking(collection(firestore, "chats"), {
       ...group,
       unreadCount: 0,
@@ -287,7 +287,7 @@ export function ChatInterface({
         {view === "chats" && (
           <ChatList
             chats={chats || []}
-            selectedChat={selectedChat}
+            selectedChat={selectedChat || null}
             onSelectChat={handleSelectChat}
             isLoading={isLoadingChats}
           />

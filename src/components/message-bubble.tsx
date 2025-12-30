@@ -7,6 +7,8 @@ import { UserAvatar } from "./user-avatar";
 import { Check, CheckCheck } from "lucide-react";
 import { useUser } from "@/firebase";
 
+import { format } from "date-fns";
+
 interface MessageBubbleProps {
   message: Message;
   sender?: Partial<User>;
@@ -15,6 +17,16 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, sender }: MessageBubbleProps) {
   const { user: currentUser } = useUser();
   const isCurrentUser = message.senderId === currentUser?.uid;
+
+  const formatTime = (ts: any) => {
+    if (!ts) return '';
+    try {
+        const date = ts.toDate ? ts.toDate() : (ts instanceof Date ? ts : new Date(ts));
+        return format(date, "HH:mm");
+    } catch (e) {
+        return '';
+    }
+  };
 
   const renderStatus = () => {
     if (!isCurrentUser) return null;
@@ -59,7 +71,7 @@ export function MessageBubble({ message, sender }: MessageBubbleProps) {
         <p className="text-base whitespace-pre-wrap break-words">{message.text}</p>
         <div className="flex items-center justify-end mt-1">
           <span className="text-xs text-muted-foreground/80">
-            {message.timestamp}
+            {formatTime(message.timestamp)}
           </span>
           {renderStatus()}
         </div>
